@@ -3,10 +3,12 @@ package websocket
 import (
 	"Messenges-service/internal/usecase"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/contrib/v3/websocket"
+	"github.com/hashicorp/go-hclog"
 )
 
 type websocketClient struct {
+	log     hclog.Logger
 	profile *usecase.Profile
 }
 
@@ -16,6 +18,8 @@ func NewWebsocketClient(p *usecase.Profile) *websocketClient {
 	}
 }
 
-func (wc *websocketClient) MessageChanel(c fiber.Ctx) {
-	err := wc.profile.MessageChanel()
+func (wc *websocketClient) MessageChanel() func(*websocket.Conn) {
+	return func(c *websocket.Conn) {
+		_ = wc.profile.MessageChanel(c)
+	}
 }

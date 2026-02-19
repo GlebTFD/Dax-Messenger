@@ -1,25 +1,20 @@
 package usecase
 
 import (
+	"Messenges-service/internal/dto"
 	"fmt"
 
-	"github.com/gorilla/websocket"
+	"github.com/gofiber/contrib/v3/websocket"
 )
 
-func (p *Profile) MessageChanel() error {
-	mc, err := p.upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		p.log.Error("Error to create conn", "error", err)
-		return fmt.Errorf("Error to create conn: %s", err)
-	}
-
-	err = mc.WriteMessage(1, []byte("Server is listening\n"))
+func (p *Profile) MessageChanel(conn *websocket.Conn) error {
+	err := conn.WriteMessage(1, []byte("Server is listening\n"))
 	if err != nil {
 		p.log.Error("Error to write message", "error", err)
 		return fmt.Errorf("Error to write message: %s", err)
 	}
 
-	err = reader(mc)
+	err = reader(conn)
 	if err != nil {
 		if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
 			p.log.Info("client closed the conn")
@@ -27,21 +22,25 @@ func (p *Profile) MessageChanel() error {
 		}
 
 		p.log.Error("Error to read message", "error", err)
-		return nil
+		return fmt.Errorf("read loop failed: %w", err)
 	}
 
 	return nil
 }
 
 func reader(conn *websocket.Conn) error {
+	var msg dto.Message
+
 	for {
-		_, data, err := conn.ReadMessage()
+		err := conn.ReadJSON(&msg)
 		if err != nil {
 			return err
 		}
 
-		if string(data) == "test" {
-			fmt.Printf("response: %s\n", data)
-		}
+		// remove if not needed
+		conn.WriteMessage(1, []byte("msg is very cool"))
+
+		// for test
+		fmt.Printf("msg: %s\n", msg.Payload.Text)
 	}
 }

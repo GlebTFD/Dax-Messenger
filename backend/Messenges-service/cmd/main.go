@@ -1,9 +1,10 @@
 package main
 
 import (
-	"Messenges-service/internal/controller/websocket"
+	wsClient "Messenges-service/internal/controller/websocket"
 	"Messenges-service/internal/usecase"
 
+	"github.com/gofiber/contrib/v3/websocket"
 	"github.com/gofiber/fiber/v3"
 	"github.com/hashicorp/go-hclog"
 )
@@ -14,10 +15,10 @@ func main() {
 	log := hclog.Default()
 
 	profile := usecase.NewProfile(log)
-	wc := websocket.NewWebsocketClient(profile)
+	wc := wsClient.NewWebsocketClient(profile)
 
 	// Endpoints
-	router.Get("/message", wc.MessageChanel)
+	router.Get("/message", websocket.New(wc.MessageChanel()))
 
 	router.Listen(":8080")
 }
