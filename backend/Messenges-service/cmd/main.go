@@ -1,8 +1,11 @@
 package main
 
 import (
+	"Messenges-service/config"
+	"Messenges-service/internal/adapter/postgres"
 	wsClient "Messenges-service/internal/controller/websocket"
 	"Messenges-service/internal/usecase"
+	"context"
 
 	"github.com/gofiber/contrib/v3/websocket"
 	"github.com/gofiber/fiber/v3"
@@ -10,11 +13,25 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
+
 	router := fiber.New()
 
 	log := hclog.Default()
 
-	profile := usecase.NewProfile(log)
+	config, err := config.InitConfig()
+	if err != nil {
+		log.Error("Error to init config: %w", err)
+		return
+	}
+
+	pool, err := postgres.New(ctx, log, config.Postgres)
+	if err != nil {
+		log.Error("Error to init pool to db: %w", err)
+		return
+	}
+
+	profile := usecase.NewProfile(log, pool)
 	wc := wsClient.NewWebsocketClient(profile)
 
 	// Endpoints

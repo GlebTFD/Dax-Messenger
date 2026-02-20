@@ -29,7 +29,7 @@ func (p *Profile) MessageChanel(conn *websocket.Conn) error {
 }
 
 func reader(conn *websocket.Conn) error {
-	var msg dto.Message
+	var msg dto.MessageJSON
 
 	for {
 		err := conn.ReadJSON(&msg)
