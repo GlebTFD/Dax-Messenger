@@ -2,19 +2,21 @@ package usecase
 
 import (
 	"Messenges-service/internal/dto"
+	"context"
 	"fmt"
 
 	"github.com/gofiber/contrib/v3/websocket"
 )
 
-func (p *Profile) MessageChanel(conn *websocket.Conn) error {
+func (p *Profile) MessageChannel(conn *websocket.Conn) error {
 	err := conn.WriteMessage(1, []byte("Server is listening\n"))
 	if err != nil {
 		p.log.Error("Error to write message", "error", err)
 		return fmt.Errorf("Error to write message: %s", err)
 	}
 
-	err = reader(conn)
+	// remove context.Background to ctx from func parameters
+	err = p.reader(context.Background(), conn)
 	if err != nil {
 		if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
 			p.log.Info("client closed the conn")
@@ -28,19 +30,19 @@ func (p *Profile) MessageChanel(conn *websocket.Conn) error {
 	return nil
 }
 
-func reader(conn *websocket.Conn) error {
-	var msg dto.MessageJSON
-
+func (p *Profile) reader(ctx context.Context, conn *websocket.Conn) error {
 	for {
+		var msg dto.MessageJSON
+
 		err := conn.ReadJSON(&msg)
 		if err != nil {
 			return err
 		}
 
-		// remove if not needed
-		conn.WriteMessage(1, []byte("msg is very cool"))
-
-		// for test
-		fmt.Printf("msg: %s\n", msg.Payload.Text)
+		err = p.postgres.CreateMessage(ctx, &msg)
+		if err != nil {
+			p.log.Error("Error to create message", "error", err)
+			// TODO: add system system_notification
+		}
 	}
 }

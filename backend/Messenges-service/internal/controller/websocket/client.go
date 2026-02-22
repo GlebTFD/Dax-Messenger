@@ -20,6 +20,10 @@ func NewWebsocketClient(p *usecase.Profile) *websocketClient {
 
 func (wc *websocketClient) MessageChanel() func(*websocket.Conn) {
 	return func(c *websocket.Conn) {
-		_ = wc.profile.MessageChanel(c)
+		err := wc.profile.MessageChannel(c)
+		if err != nil {
+			wc.log.Error("Error in server", "error", err)
+			return
+		}
 	}
 }

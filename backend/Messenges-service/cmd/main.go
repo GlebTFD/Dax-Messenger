@@ -21,13 +21,13 @@ func main() {
 
 	config, err := config.InitConfig()
 	if err != nil {
-		log.Error("Error to init config: %w", err)
+		log.Error("Error to init config", "error", err)
 		return
 	}
 
 	pool, err := postgres.New(ctx, log, config.Postgres)
 	if err != nil {
-		log.Error("Error to init pool to db: %w", err)
+		log.Error("Error to init pool to db", "error", err)
 		return
 	}
 

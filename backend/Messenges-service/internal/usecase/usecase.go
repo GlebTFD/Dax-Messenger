@@ -9,7 +9,7 @@ import (
 )
 
 type Postgres interface {
-	CreateMessage(ctx context.Context, msg dto.Message) error
+	CreateMessage(ctx context.Context, msg *dto.MessageJSON) error
 }
 
 type Profile struct {

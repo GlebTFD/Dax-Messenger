@@ -38,14 +38,14 @@ func New(ctx context.Context, log hclog.Logger, c Config) (*Pool, error) {
 	return &Pool{pool: pool, log: log}, nil
 }
 
-func (p *Pool) CreateMessage(ctx context.Context, msg dto.Message) error {
+func (p *Pool) CreateMessage(ctx context.Context, msg *dto.MessageJSON) error {
 	_, err := p.pool.Exec(ctx,
-		"INSERT INTO messages (id, type, timestamp, text, replyto) VALUES ($1, $2, $3, $4, $5)",
-		msg.ID, msg.Type, msg.Timestamp, msg.Text, msg.ReplyTo,
+		"INSERT INTO messages (id, type, timestamp, text, reply_to) VALUES ($1, $2, $3, $4, $5)",
+		msg.ID, msg.Type, msg.Timestamp, msg.Payload.Text, msg.Payload.ReplyTo,
 	)
 
 	if err != nil {
-		return fmt.Errorf("failed to write user to db: %w", err)
+		return fmt.Errorf("failed to write message to db: %w", err)
 	}
 
 	return nil
