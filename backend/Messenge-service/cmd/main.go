@@ -32,8 +32,8 @@ func main() {
 		return
 	}
 
-	profile := usecase.NewProfile(log, pool)
-	wc := wsClient.NewWebsocketClient(profile)
+	messageService := usecase.NewMessageService(log, pool)
+	wc := wsClient.NewWebsocketClient(messageService)
 
 	// Endpoints
 	router.Get("/message", websocket.New(wc.MessageChanel()))

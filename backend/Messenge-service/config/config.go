@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/GlebTFD/Dax-Messenger/Messenge-service/internal/adapter/postgres"
+	"github.com/GlebTFD/Dax-Messenger/Messenge-service/internal/adapter/redis"
 
 	"github.com/caarlos0/env/v11"
 	"github.com/joho/godotenv"
@@ -11,6 +12,7 @@ import (
 
 type Config struct {
 	Postgres postgres.Config
+	PubSub   redis.RedisPubSubClient
 }
 
 func InitConfig() (Config, error) {

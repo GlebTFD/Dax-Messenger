@@ -8,19 +8,19 @@ import (
 )
 
 type websocketClient struct {
-	log     hclog.Logger
-	profile *usecase.Profile
+	log            hclog.Logger
+	messageService *usecase.MessageService
 }
 
-func NewWebsocketClient(p *usecase.Profile) *websocketClient {
+func NewWebsocketClient(p *usecase.MessageService) *websocketClient {
 	return &websocketClient{
-		profile: p,
+		messageService: p,
 	}
 }
 
 func (wc *websocketClient) MessageChanel() func(*websocket.Conn) {
 	return func(c *websocket.Conn) {
-		err := wc.profile.MessageChannel(c)
+		err := wc.messageService.MessageChannel(c)
 		if err != nil {
 			wc.log.Error("Error in server", "error", err)
 			return

@@ -23,9 +23,9 @@ type Pool struct {
 	pool *pgxpool.Pool
 }
 
-func New(ctx context.Context, log hclog.Logger, c Config) (*Pool, error) {
+func New(ctx context.Context, log hclog.Logger, cfg Config) (*Pool, error) {
 	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s",
-		c.User, c.Password, c.Host, c.Port, c.DBName)
+		cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.DBName)
 
 	pool, err := pgxpool.New(ctx, connString)
 	if err != nil {

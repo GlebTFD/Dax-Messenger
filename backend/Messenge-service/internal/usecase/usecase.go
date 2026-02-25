@@ -13,14 +13,14 @@ type Postgres interface {
 	CreateMessage(ctx context.Context, msg *dto.MessageJSON) error
 }
 
-type Profile struct {
+type MessageService struct {
 	log      hclog.Logger
 	postgres Postgres
 }
 
 // maybe change name of vars
-func NewProfile(l hclog.Logger, postgres *postgres.Pool) *Profile {
-	return &Profile{
+func NewMessageService(l hclog.Logger, postgres *postgres.Pool) *MessageService {
+	return &MessageService{
 		log:      l,
 		postgres: postgres,
 	}
