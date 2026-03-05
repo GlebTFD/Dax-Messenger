@@ -12,18 +12,18 @@ import (
 
 type Config struct {
 	Postgres postgres.Config
-	PubSub   redis.RedisPubSubClient
+	PubSub   redis.PubSubConfig
 }
 
 func InitConfig() (Config, error) {
 	cfg := Config{}
 
 	if err := godotenv.Load(); err != nil {
-		return Config{}, fmt.Errorf("Error to load env: %w", err)
+		return Config{}, fmt.Errorf("error to load env: %w", err)
 	}
 
 	if err := env.Parse(&cfg); err != nil {
-		return Config{}, fmt.Errorf("Error to parse env: %w", err)
+		return Config{}, fmt.Errorf("error to parse env: %w", err)
 	}
 
 	return cfg, nil

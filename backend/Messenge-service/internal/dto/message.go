@@ -19,3 +19,8 @@ type TextMessagePayload struct {
 	Text    string `json:"text"`
 	ReplyTo string `json:"replyTo"`
 }
+
+type PubSubMessage struct {
+	Channel string
+	Payload string
+}

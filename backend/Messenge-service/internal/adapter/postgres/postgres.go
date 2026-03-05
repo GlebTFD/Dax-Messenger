@@ -29,7 +29,7 @@ func New(ctx context.Context, log hclog.Logger, cfg Config) (*Pool, error) {
 
 	pool, err := pgxpool.New(ctx, connString)
 	if err != nil {
-		return nil, fmt.Errorf("Error to create a pool: %w", err)
+		return nil, fmt.Errorf("error to create a pool: %w", err)
 	}
 
 	if err = pool.Ping(ctx); err != nil {

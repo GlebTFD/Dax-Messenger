@@ -13,19 +13,34 @@ func (m *MessageService) MessageChannel(conn *websocket.Conn) error {
 	err := conn.WriteMessage(1, []byte("Server is listening\n"))
 	if err != nil {
 		m.log.Error("Error to write message", "error", err)
-		return fmt.Errorf("Error to write message: %s", err)
+		return fmt.Errorf("error to write message: %s", err)
 	}
 
-	// remove context.Background to ctx from func parameters
-	err = m.wsReader(context.Background(), conn)
-	if err != nil {
-		if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-			m.log.Info("client closed the conn")
-			return nil
-		}
+	errChan := make(chan error, 2)
 
-		m.log.Error("Error to read message", "error", err)
-		return fmt.Errorf("read loop failed: %w", err)
+	go func() {
+		// CONTEXT.BACKGROUD!!!
+		err := m.wsReader(context.Background(), conn)
+		if err != nil && !websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+			errChan <- fmt.Errorf("read loop failed: %w", err)
+		} else {
+			errChan <- nil
+		}
+	}()
+
+	// maybe this needs to be moved to the controller
+	go func() {
+		// CONTEXT.BACKGROUD!!!
+		err := m.redisPubSub.SubscribeAndRun(context.Background(), "test:1")
+		if err != nil {
+			errChan <- fmt.Errorf("subscribe failed: %w", err)
+		} else {
+			errChan <- nil
+		}
+	}()
+
+	if err := <-errChan; err != nil {
+		return err
 	}
 
 	return nil
@@ -46,8 +61,4 @@ func (m *MessageService) wsReader(ctx context.Context, conn *websocket.Conn) err
 			// TODO: add system system_notification
 		}
 	}
-}
-
-func (m *MessageService) subscribeToNewMessage() error {
-	return nil
 }

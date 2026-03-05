@@ -5,6 +5,7 @@ import (
 
 	"github.com/GlebTFD/Dax-Messenger/Messenge-service/config"
 	"github.com/GlebTFD/Dax-Messenger/Messenge-service/internal/adapter/postgres"
+	"github.com/GlebTFD/Dax-Messenger/Messenge-service/internal/adapter/redis"
 	wsClient "github.com/GlebTFD/Dax-Messenger/Messenge-service/internal/controller/websocket"
 	"github.com/GlebTFD/Dax-Messenger/Messenge-service/internal/usecase"
 
@@ -32,11 +33,17 @@ func main() {
 		return
 	}
 
-	messageService := usecase.NewMessageService(log, pool)
+	redisPSHandler := usecase.NewUserPubSubHandler(log)
+	psRedisClient := redis.New(ctx, log, config.PubSub, redisPSHandler)
+
+	messageService := usecase.NewMessageService(log, pool, psRedisClient)
 	wc := wsClient.NewWebsocketClient(messageService)
 
 	// Endpoints
 	router.Get("/message", websocket.New(wc.MessageChanel()))
 
-	router.Listen(":8080")
+	err = router.Listen(":8080")
+	if err != nil {
+		log.Error("error in listen server", "error", err)
+	}
 }
