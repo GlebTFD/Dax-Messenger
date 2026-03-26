@@ -10,10 +10,17 @@ import (
 )
 
 func (m *MessageService) MessageChannel(conn *websocket.Conn) error {
-	err := conn.WriteMessage(1, []byte("Server is listening\n"))
+	err := conn.WriteMessage(1, []byte("Send your id\n"))
 	if err != nil {
 		m.log.Error("Error to write message", "error", err)
 		return fmt.Errorf("error to write message: %s", err)
+	}
+
+	var id dto.UserId
+	err = conn.ReadJSON(&id)
+	if err != nil {
+		m.log.Error("User didt send id ot read json fatal error", "error", err)
+		return fmt.Errorf("user didt send id ot read json fatal error")
 	}
 
 	errChan := make(chan error, 2)
@@ -31,7 +38,7 @@ func (m *MessageService) MessageChannel(conn *websocket.Conn) error {
 	// maybe this needs to be moved to the controller
 	go func() {
 		// CONTEXT.BACKGROUD!!!
-		err := m.redisPubSub.SubscribeAndRun(context.Background(), "test:1")
+		err := m.redisPubSub.SubscribeAndRun(context.Background(), "chat:"+id.ID)
 		if err != nil {
 			errChan <- fmt.Errorf("subscribe failed: %w", err)
 		} else {
@@ -59,6 +66,11 @@ func (m *MessageService) wsReader(ctx context.Context, conn *websocket.Conn) err
 		if err != nil {
 			m.log.Error("Error to create message", "error", err)
 			// TODO: add system system_notification
+		}
+
+		err = m.redisPubSub.PublishToChannel(ctx, "chat:"+msg.ID, msg.Payload.Text)
+		if err != nil {
+			m.log.Error("Error to publish msg to channel", "error", err)
 		}
 	}
 }

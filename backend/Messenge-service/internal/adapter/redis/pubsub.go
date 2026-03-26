@@ -67,6 +67,6 @@ func (p *RedisPubSubClient) SubscribeAndRun(ctx context.Context, channelName str
 	}
 }
 
-func (p *RedisPubSubClient) PublishToChannel(ctx context.Context, channel string, msg []byte) error {
+func (p *RedisPubSubClient) PublishToChannel(ctx context.Context, channel string, msg interface{}) error {
 	return p.client.Publish(ctx, channel, msg).Err()
 }

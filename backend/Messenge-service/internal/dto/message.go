@@ -24,3 +24,7 @@ type PubSubMessage struct {
 	Channel string
 	Payload string
 }
+
+type UserId struct {
+	ID string `json:"id"`
+}
