@@ -7,6 +7,7 @@ import (
 	"github.com/GlebTFD/Dax-Messenger/Messenge-service/internal/adapter/postgres"
 	"github.com/GlebTFD/Dax-Messenger/Messenge-service/internal/adapter/redis"
 	wsClient "github.com/GlebTFD/Dax-Messenger/Messenge-service/internal/controller/websocket"
+	"github.com/GlebTFD/Dax-Messenger/Messenge-service/internal/domain"
 	"github.com/GlebTFD/Dax-Messenger/Messenge-service/internal/usecase"
 
 	"github.com/gofiber/contrib/v3/websocket"
@@ -33,10 +34,14 @@ func main() {
 		return
 	}
 
-	redisPSHandler := usecase.NewUserPubSubHandler(log)
+	wsConns := domain.ConnectionManager{
+		Conns: make(map[string]*websocket.Conn),
+	}
+
+	redisPSHandler := usecase.NewUserPubSubHandler(log, &wsConns)
 	psRedisClient := redis.New(ctx, log, config.PubSub, redisPSHandler)
 
-	messageService := usecase.NewMessageService(log, pool, psRedisClient)
+	messageService := usecase.NewMessageService(log, pool, psRedisClient, &wsConns)
 	wc := wsClient.NewWebsocketClient(messageService)
 
 	// Endpoints

@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/GlebTFD/Dax-Messenger/Messenge-service/internal/dto"
 	"github.com/GlebTFD/Dax-Messenger/Messenge-service/internal/usecase"
@@ -62,6 +63,9 @@ func (p *RedisPubSubClient) SubscribeAndRun(ctx context.Context, channelName str
 				}); err != nil {
 					p.log.Error("Handler Error", "error", err, "channel", msg.Channel)
 				}
+			} else {
+				p.log.Error("Handler not found")
+				return fmt.Errorf("handler not found")
 			}
 		}
 	}

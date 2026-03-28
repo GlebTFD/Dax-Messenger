@@ -4,24 +4,25 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/GlebTFD/Dax-Messenger/Messenge-service/internal/domain"
 	"github.com/GlebTFD/Dax-Messenger/Messenge-service/internal/dto"
 
 	"github.com/gofiber/contrib/v3/websocket"
 )
 
 func (m *MessageService) MessageChannel(conn *websocket.Conn) error {
-	err := conn.WriteMessage(1, []byte("Send your id\n"))
-	if err != nil {
-		m.log.Error("Error to write message", "error", err)
-		return fmt.Errorf("error to write message: %s", err)
-	}
-
-	var id dto.UserId
-	err = conn.ReadJSON(&id)
+	// user wiil be send id
+	var id domain.UserId
+	err := conn.ReadJSON(&id)
 	if err != nil {
 		m.log.Error("User didt send id ot read json fatal error", "error", err)
 		return fmt.Errorf("user didt send id ot read json fatal error")
 	}
+
+	// add to ws wsConns
+	m.wsConns.Lock()
+	m.wsConns.Conns[id.ID] = conn
+	m.wsConns.Unlock()
 
 	errChan := make(chan error, 2)
 
@@ -68,7 +69,7 @@ func (m *MessageService) wsReader(ctx context.Context, conn *websocket.Conn) err
 			// TODO: add system system_notification
 		}
 
-		err = m.redisPubSub.PublishToChannel(ctx, "chat:"+msg.ID, msg.Payload.Text)
+		err = m.redisPubSub.PublishToChannel(ctx, "chat:"+msg.Payload.ReplyTo, msg.Payload.Text)
 		if err != nil {
 			m.log.Error("Error to publish msg to channel", "error", err)
 		}
