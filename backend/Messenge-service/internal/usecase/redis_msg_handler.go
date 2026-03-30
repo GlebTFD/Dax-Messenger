@@ -15,7 +15,7 @@ func (h *UserPubSubHandler) HandleRedisMessage(ctx context.Context, msg dto.PubS
 	h.log.Info("redis msg", "msg", msg)
 
 	// Make it so that you can get the ID in a different way, if necessary
-	id := msg.Channel[5+len(":"):]
+	id := msg.Channel[len("chat:"):]
 
 	payload := dto.TextMessagePayload{
 		ReplyTo: id,
@@ -27,8 +27,13 @@ func (h *UserPubSubHandler) HandleRedisMessage(ctx context.Context, msg dto.PubS
 	}
 
 	h.wsConns.RLock()
-	conn := h.wsConns.Conns[id]
+	conn, ok := h.wsConns.Conns[id]
 	h.wsConns.RUnlock()
+
+	if !ok {
+		h.log.Warn("User not connected, message dropped", "user_id", id)
+		return nil
+	}
 
 	err := conn.WriteJSON(msgJSON)
 	if err != nil {
