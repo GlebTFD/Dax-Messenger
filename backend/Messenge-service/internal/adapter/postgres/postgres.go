@@ -51,3 +51,25 @@ func (p *Pool) CreateMessage(ctx context.Context, msg *dto.MessageJSON) error {
 
 	return nil
 }
+
+func (p *Pool) DeleteMessage(ctx context.Context, msgId string) error {
+	_, err := p.pool.Exec(ctx,
+		"DELETE FROM messages WHERE id=$1", msgId,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to delete message(db): %w", err)
+	}
+
+	return nil
+}
+
+func (p *Pool) UpdateMessage(ctx context.Context, nmsg *dto.MessageJSON) error {
+	_, err := p.pool.Exec(ctx,
+		"UPDATE messages SET text=$2 WHERE id=$1", nmsg.ID, nmsg.Payload.Text,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update message(db): %w", err)
+	}
+
+	return nil
+}

@@ -12,6 +12,8 @@ import (
 
 type Postgres interface {
 	CreateMessage(ctx context.Context, msg *dto.MessageJSON) error
+	DeleteMessage(ctx context.Context, msgId string) error
+	UpdateMessage(ctx context.Context, nmsg *dto.MessageJSON) error
 }
 
 type RedisPubSub interface {
@@ -27,7 +29,6 @@ type MessageService struct {
 	wsConns     *domain.ConnectionManager
 }
 
-// maybe change name of vars
 func NewMessageService(log hclog.Logger, postgres *postgres.Pool, redisPubSub RedisPubSub, wsConns *domain.ConnectionManager) *MessageService {
 	return &MessageService{
 		log:         log,

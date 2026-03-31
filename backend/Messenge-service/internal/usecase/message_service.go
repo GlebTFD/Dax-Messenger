@@ -10,6 +10,18 @@ import (
 	"github.com/gofiber/contrib/v3/websocket"
 )
 
+// http
+func (m *MessageService) DeleteMessage(msgId string) error {
+	// CONTEXT.BACKGROUD!!!
+	err := m.postgres.DeleteMessage(context.Background(), msgId)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// websocket
 func (m *MessageService) MessageChannel(conn *websocket.Conn) error {
 	// user wiil be send id
 	var id domain.UserId
@@ -50,7 +62,6 @@ func (m *MessageService) MessageChannel(conn *websocket.Conn) error {
 	if err := <-errChan; err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -68,6 +79,10 @@ func (m *MessageService) wsReader(ctx context.Context, conn *websocket.Conn) err
 			m.log.Error("Error to create message", "error", err)
 			// TODO: add system system_notification
 		}
+
+		// chMsg := dto.ChannelMessage{
+		// 	Type: "msg",
+		// }
 
 		err = m.redisPubSub.PublishToChannel(ctx, "chat:"+msg.Payload.ReplyTo, msg.Payload.Text)
 		if err != nil {

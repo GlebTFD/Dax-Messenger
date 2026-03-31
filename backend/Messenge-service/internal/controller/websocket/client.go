@@ -7,18 +7,18 @@ import (
 	"github.com/hashicorp/go-hclog"
 )
 
-type websocketClient struct {
+type WebsocketClient struct {
 	log            hclog.Logger
 	messageService *usecase.MessageService
 }
 
-func NewWebsocketClient(p *usecase.MessageService) *websocketClient {
-	return &websocketClient{
+func NewWebsocketClient(p *usecase.MessageService) *WebsocketClient {
+	return &WebsocketClient{
 		messageService: p,
 	}
 }
 
-func (wc *websocketClient) MessageChanel() func(*websocket.Conn) {
+func (wc *WebsocketClient) MessageChanel() func(*websocket.Conn) {
 	return func(c *websocket.Conn) {
 		err := wc.messageService.MessageChannel(c)
 		if err != nil {

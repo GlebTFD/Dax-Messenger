@@ -20,7 +20,15 @@ type TextMessagePayload struct {
 	ReplyTo string `json:"replyTo"`
 }
 
+// in the future, merge these two structures
 type PubSubMessage struct {
 	Channel string
 	Payload string
 }
+
+type ChannelMessage struct {
+	Type    string
+	Payload interface{}
+}
+
+// merge end
