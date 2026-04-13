@@ -2,6 +2,10 @@ package main
 
 import (
 	"context"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/GlebTFD/Dax-Messenger/Messenge-service/config"
 	"github.com/GlebTFD/Dax-Messenger/Messenge-service/internal/adapter/postgres"
@@ -17,42 +21,59 @@ import (
 )
 
 func main() {
-	ctx := context.Background()
-
-	router := fiber.New()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	log := hclog.Default()
 
-	config, err := config.InitConfig()
+	cfg, err := config.InitConfig()
 	if err != nil {
 		log.Error("Error to init config", "error", err)
 		return
 	}
 
-	pool, err := postgres.New(ctx, log, config.Postgres)
+	pool, err := postgres.New(ctx, log, cfg.Postgres)
 	if err != nil {
 		log.Error("Error to init pool to db", "error", err)
 		return
 	}
 
-	// add delete conn after disconn
 	wsConns := domain.ConnectionManager{
 		Conns: make(map[string]*websocket.Conn),
 	}
 
 	redisPSHandler := usecase.NewUserPubSubHandler(log, &wsConns)
-	psRedisClient := redis.New(ctx, log, config.PubSub, redisPSHandler)
+	psRedisClient := redis.New(ctx, log, cfg.PubSub, redisPSHandler)
 
 	messageService := usecase.NewMessageService(log, pool, psRedisClient, &wsConns)
 	wc := wsClient.NewWebsocketClient(messageService)
-	http := http.NewHTTPHandler(log, messageService)
+	httpHandler := http.NewHTTPHandler(log, messageService)
+
+	router := fiber.New()
 
 	// Endpoints
 	router.Get("/message", websocket.New(wc.MessageChanel()))
-	router.Delete("/message/:id", http.DeleteMessage)
+	router.Delete("/message/:id", httpHandler.DeleteMessage)
 
-	err = router.Listen(":8080")
-	if err != nil {
-		log.Error("error in listen server", "error", err)
+	// Graceful shutdown
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		sig := <-shutdown
+		log.Info("Received signal, shutting down", "signal", sig)
+		cancel()
+
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer shutdownCancel()
+
+		if err := router.ShutdownWithContext(shutdownCtx); err != nil {
+			log.Error("Error shutting down server", "error", err)
+		}
+	}()
+
+	log.Info("Server starting on :8080")
+	if err := router.Listen(":8080"); err != nil {
+		log.Error("Error in listen server", "error", err)
 	}
 }

@@ -67,6 +67,12 @@ func (m *MessageService) MessageChannel(conn *websocket.Conn) error {
 
 func (m *MessageService) wsReader(ctx context.Context, conn *websocket.Conn) error {
 	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
 		var msg dto.MessageJSON
 
 		err := conn.ReadJSON(&msg)
@@ -79,10 +85,6 @@ func (m *MessageService) wsReader(ctx context.Context, conn *websocket.Conn) err
 			m.log.Error("Error to create message", "error", err)
 			// TODO: add system system_notification
 		}
-
-		// chMsg := dto.ChannelMessage{
-		// 	Type: "msg",
-		// }
 
 		err = m.redisPubSub.PublishToChannel(ctx, "chat:"+msg.Payload.ReplyTo, msg.Payload.Text)
 		if err != nil {
