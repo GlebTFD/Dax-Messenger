@@ -12,8 +12,8 @@ import (
 
 type Postgres interface {
 	CreateMessage(ctx context.Context, msg *dto.MessageJSON) error
-	DeleteMessage(ctx context.Context, msgId string) error
-	UpdateMessage(ctx context.Context, nmsg *dto.MessageJSON) error
+	DeleteMessage(ctx context.Context, msgId string) (string, error)
+	UpdateMessage(ctx context.Context, msgId string, text string) (string, error)
 }
 
 type RedisPubSub interface {

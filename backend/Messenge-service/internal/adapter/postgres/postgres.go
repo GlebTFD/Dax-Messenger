@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/GlebTFD/Dax-Messenger/Messenge-service/internal/dto"
+	"github.com/google/uuid"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -40,9 +41,12 @@ func New(ctx context.Context, log hclog.Logger, cfg Config) (*Pool, error) {
 }
 
 func (p *Pool) CreateMessage(ctx context.Context, msg *dto.MessageJSON) error {
+	// generate uuid
+	id := uuid.New()
+
 	_, err := p.pool.Exec(ctx,
-		"INSERT INTO messages (id, type, timestamp, text, reply_to) VALUES ($1, $2, $3, $4, $5)",
-		msg.ID, msg.Type, msg.Timestamp, msg.Payload.Text, msg.Payload.ReplyTo,
+		"INSERT INTO messages (id, type, timestamp, text, reply_to, sended_id) VALUES ($1, $2, $3, $4, $5, $6)",
+		id, msg.Type, msg.Timestamp, msg.Payload.Text, msg.Payload.ReplyTo, msg.ID,
 	)
 
 	if err != nil {
@@ -52,24 +56,28 @@ func (p *Pool) CreateMessage(ctx context.Context, msg *dto.MessageJSON) error {
 	return nil
 }
 
-func (p *Pool) DeleteMessage(ctx context.Context, msgId string) error {
-	_, err := p.pool.Exec(ctx,
-		"DELETE FROM messages WHERE id=$1", msgId,
-	)
+func (p *Pool) DeleteMessage(ctx context.Context, msgId string) (string, error) {
+	var replyTo string
+	err := p.pool.QueryRow(ctx,
+		"DELETE FROM messages WHERE id=$1 RETURNING reply_to", msgId,
+	).Scan(&replyTo)
+
 	if err != nil {
-		return fmt.Errorf("failed to delete message(db): %w", err)
+		return "", fmt.Errorf("failed to delete message(db): %w", err)
 	}
 
-	return nil
+	return replyTo, nil
 }
 
-func (p *Pool) UpdateMessage(ctx context.Context, nmsg *dto.MessageJSON) error {
-	_, err := p.pool.Exec(ctx,
-		"UPDATE messages SET text=$2 WHERE id=$1", nmsg.ID, nmsg.Payload.Text,
-	)
+func (p *Pool) UpdateMessage(ctx context.Context, msgId string, text string) (string, error) {
+	var replyTo string
+	err := p.pool.QueryRow(ctx,
+		"UPDATE messages SET text=$2 WHERE id=$1 RETURNING reply_to", msgId, text,
+	).Scan(&replyTo)
+
 	if err != nil {
-		return fmt.Errorf("failed to update message(db): %w", err)
+		return "", fmt.Errorf("failed to update message(db): %w", err)
 	}
 
-	return nil
+	return replyTo, nil
 }

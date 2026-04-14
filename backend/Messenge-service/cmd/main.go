@@ -54,6 +54,7 @@ func main() {
 	// Endpoints
 	router.Get("/message", websocket.New(wc.MessageChanel()))
 	router.Delete("/message/:id", httpHandler.DeleteMessage)
+	router.Put("/message/:id", httpHandler.UpdateMessage)
 
 	// Graceful shutdown
 	shutdown := make(chan os.Signal, 1)

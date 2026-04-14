@@ -32,3 +32,37 @@ type ChannelMessage struct {
 }
 
 // merge end
+
+type DeleteMessageResponse struct {
+	ID      string `json:"id"`
+	Deleted bool   `json:"deleted"`
+}
+
+type DeletedNotificationPayload struct {
+	ID string `json:"id"`
+}
+
+type DeleteNotification struct {
+	Type    string                     `json:"type"`
+	Payload DeletedNotificationPayload `json:"payload"`
+}
+
+type UpdateMessageRequest struct {
+	Text string `json:"text"`
+}
+
+type UpdateMessageResponse struct {
+	ID      string `json:"id"`
+	Updated bool   `json:"updated"`
+	Text    string `json:"text"`
+}
+
+type UpdatedNotificationPayload struct {
+	ID   string `json:"id"`
+	Text string `json:"text"`
+}
+
+type UpdateNotification struct {
+	Type    string                    `json:"type"`
+	Payload UpdatedNotificationPayload `json:"payload"`
+}

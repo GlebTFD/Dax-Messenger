@@ -2,20 +2,73 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/GlebTFD/Dax-Messenger/Messenge-service/internal/domain"
 	"github.com/GlebTFD/Dax-Messenger/Messenge-service/internal/dto"
 
 	"github.com/gofiber/contrib/v3/websocket"
+	"github.com/jackc/pgx/v5"
 )
+
+var ErrMessageNotFound = errors.New("message not found")
+var ErrEmptyText = errors.New("text cannot be empty")
 
 // http
 func (m *MessageService) DeleteMessage(msgId string) error {
-	// CONTEXT.BACKGROUD!!!
-	err := m.postgres.DeleteMessage(context.Background(), msgId)
+	replyTo, err := m.postgres.DeleteMessage(context.Background(), msgId)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrMessageNotFound
+		}
 		return err
+	}
+
+	// Notify recipient if online
+	m.wsConns.RLock()
+	conn, ok := m.wsConns.Conns[replyTo]
+	m.wsConns.RUnlock()
+
+	if ok {
+		notification := dto.DeleteNotification{
+			Type:    "message_deleted",
+			Payload: dto.DeletedNotificationPayload{ID: msgId},
+		}
+		if writeErr := conn.WriteJSON(notification); writeErr != nil {
+			m.log.Error("Error to send delete notification", "error", writeErr)
+		}
+	}
+
+	return nil
+}
+
+func (m *MessageService) UpdateMessage(msgId string, text string) error {
+	if text == "" {
+		return ErrEmptyText
+	}
+
+	replyTo, err := m.postgres.UpdateMessage(context.Background(), msgId, text)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrMessageNotFound
+		}
+		return err
+	}
+
+	// Notify recipient if online
+	m.wsConns.RLock()
+	conn, ok := m.wsConns.Conns[replyTo]
+	m.wsConns.RUnlock()
+
+	if ok {
+		notification := dto.UpdateNotification{
+			Type:    "message_updated",
+			Payload: dto.UpdatedNotificationPayload{ID: msgId, Text: text},
+		}
+		if writeErr := conn.WriteJSON(notification); writeErr != nil {
+			m.log.Error("Error to send update notification", "error", writeErr)
+		}
 	}
 
 	return nil
@@ -35,6 +88,13 @@ func (m *MessageService) MessageChannel(conn *websocket.Conn) error {
 	m.wsConns.Lock()
 	m.wsConns.Conns[id.ID] = conn
 	m.wsConns.Unlock()
+
+	// cleanup on disconnect
+	defer func() {
+		m.wsConns.Lock()
+		delete(m.wsConns.Conns, id.ID)
+		m.wsConns.Unlock()
+	}()
 
 	errChan := make(chan error, 2)
 
