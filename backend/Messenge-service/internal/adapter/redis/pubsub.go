@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/GlebTFD/Dax-Messenger/Messenge-service/internal/dto"
@@ -57,10 +58,13 @@ func (p *RedisPubSubClient) SubscribeAndRun(ctx context.Context, channelName str
 				return nil
 			}
 			if p.handler != nil {
-				if err := p.handler.HandleRedisMessage(ctx, dto.PubSubMessage{
-					Channel: msg.Channel,
-					Payload: msg.Payload,
-				}); err != nil {
+				var redisMsg dto.RedisMessage
+				if err := json.Unmarshal([]byte(msg.Payload), &redisMsg); err != nil {
+					p.log.Error("Failed to unmarshal redis message", "error", err)
+					continue
+				}
+				redisMsg.Channel = msg.Channel
+				if err := p.handler.HandleRedisMessage(ctx, redisMsg); err != nil {
 					p.log.Error("Handler Error", "error", err, "channel", msg.Channel)
 				}
 			} else {
@@ -71,6 +75,10 @@ func (p *RedisPubSubClient) SubscribeAndRun(ctx context.Context, channelName str
 	}
 }
 
-func (p *RedisPubSubClient) PublishToChannel(ctx context.Context, channel string, msg interface{}) error {
-	return p.client.Publish(ctx, channel, msg).Err()
+func (p *RedisPubSubClient) PublishToChannel(ctx context.Context, channel string, msg dto.RedisMessage) error {
+	data, err := json.Marshal(msg)
+	if err != nil {
+		return fmt.Errorf("failed to marshal message: %w", err)
+	}
+	return p.client.Publish(ctx, channel, data).Err()
 }

@@ -20,18 +20,18 @@ type TextMessagePayload struct {
 	ReplyTo string `json:"replyTo"`
 }
 
-// in the future, merge these two structures
 type PubSubMessage struct {
 	Channel string
 	Payload string
 }
 
-type ChannelMessage struct {
-	Type    string
-	Payload interface{}
+// RedisMessage is a unified structure for all pub/sub message types.
+// Type can be "message", "message_deleted", or "message_updated".
+type RedisMessage struct {
+	Channel string      `json:"channel"`
+	Type    string      `json:"type"`
+	Payload interface{} `json:"payload"`
 }
-
-// merge end
 
 type DeleteMessageResponse struct {
 	ID      string `json:"id"`
@@ -63,6 +63,6 @@ type UpdatedNotificationPayload struct {
 }
 
 type UpdateNotification struct {
-	Type    string                    `json:"type"`
+	Type    string                     `json:"type"`
 	Payload UpdatedNotificationPayload `json:"payload"`
 }

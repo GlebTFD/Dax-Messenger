@@ -25,19 +25,12 @@ func (m *MessageService) DeleteMessage(msgId string) error {
 		return err
 	}
 
-	// Notify recipient if online
-	m.wsConns.RLock()
-	conn, ok := m.wsConns.Conns[replyTo]
-	m.wsConns.RUnlock()
-
-	if ok {
-		notification := dto.DeleteNotification{
-			Type:    "message_deleted",
-			Payload: dto.DeletedNotificationPayload{ID: msgId},
-		}
-		if writeErr := conn.WriteJSON(notification); writeErr != nil {
-			m.log.Error("Error to send delete notification", "error", writeErr)
-		}
+	notification := dto.RedisMessage{
+		Type:    "message_deleted",
+		Payload: dto.DeletedNotificationPayload{ID: msgId},
+	}
+	if err := m.redisPubSub.PublishToChannel(context.Background(), "chat:"+replyTo, notification); err != nil {
+		m.log.Error("Error to publish delete notification", "error", err)
 	}
 
 	return nil
@@ -56,19 +49,12 @@ func (m *MessageService) UpdateMessage(msgId string, text string) error {
 		return err
 	}
 
-	// Notify recipient if online
-	m.wsConns.RLock()
-	conn, ok := m.wsConns.Conns[replyTo]
-	m.wsConns.RUnlock()
-
-	if ok {
-		notification := dto.UpdateNotification{
-			Type:    "message_updated",
-			Payload: dto.UpdatedNotificationPayload{ID: msgId, Text: text},
-		}
-		if writeErr := conn.WriteJSON(notification); writeErr != nil {
-			m.log.Error("Error to send update notification", "error", writeErr)
-		}
+	notification := dto.RedisMessage{
+		Type:    "message_updated",
+		Payload: dto.UpdatedNotificationPayload{ID: msgId, Text: text},
+	}
+	if err := m.redisPubSub.PublishToChannel(context.Background(), "chat:"+replyTo, notification); err != nil {
+		m.log.Error("Error to publish update notification", "error", err)
 	}
 
 	return nil
@@ -97,10 +83,11 @@ func (m *MessageService) MessageChannel(conn *websocket.Conn) error {
 	}()
 
 	errChan := make(chan error, 2)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	go func() {
-		// CONTEXT.BACKGROUD!!!
-		err := m.wsReader(context.Background(), conn)
+		err := m.wsReader(ctx, conn)
 		if err != nil && !websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
 			errChan <- fmt.Errorf("read loop failed: %w", err)
 		} else {
@@ -108,10 +95,8 @@ func (m *MessageService) MessageChannel(conn *websocket.Conn) error {
 		}
 	}()
 
-	// maybe this needs to be moved to the controller
 	go func() {
-		// CONTEXT.BACKGROUD!!!
-		err := m.redisPubSub.SubscribeAndRun(context.Background(), "chat:"+id.ID)
+		err := m.redisPubSub.SubscribeAndRun(ctx, "chat:"+id.ID)
 		if err != nil {
 			errChan <- fmt.Errorf("subscribe failed: %w", err)
 		} else {
@@ -119,10 +104,16 @@ func (m *MessageService) MessageChannel(conn *websocket.Conn) error {
 		}
 	}()
 
-	if err := <-errChan; err != nil {
-		return err
+	// Wait for both goroutines to finish. Cancel context on first error to stop the other.
+	var firstErr error
+	for range 2 {
+		if err := <-errChan; err != nil && firstErr == nil {
+			firstErr = err
+			cancel()
+		}
 	}
-	return nil
+
+	return firstErr
 }
 
 func (m *MessageService) wsReader(ctx context.Context, conn *websocket.Conn) error {
@@ -146,8 +137,11 @@ func (m *MessageService) wsReader(ctx context.Context, conn *websocket.Conn) err
 			// TODO: add system system_notification
 		}
 
-		err = m.redisPubSub.PublishToChannel(ctx, "chat:"+msg.Payload.ReplyTo, msg.Payload.Text)
-		if err != nil {
+		redisMsg := dto.RedisMessage{
+			Type:    "message",
+			Payload: msg.Payload,
+		}
+		if err := m.redisPubSub.PublishToChannel(ctx, "chat:"+msg.Payload.ReplyTo, redisMsg); err != nil {
 			m.log.Error("Error to publish msg to channel", "error", err)
 		}
 	}

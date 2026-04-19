@@ -18,7 +18,7 @@ type Postgres interface {
 
 type RedisPubSub interface {
 	SubscribeAndRun(ctx context.Context, channelName string) error
-	PublishToChannel(ctx context.Context, channel string, msg interface{}) error
+	PublishToChannel(ctx context.Context, channel string, msg dto.RedisMessage) error
 }
 
 // MessageService

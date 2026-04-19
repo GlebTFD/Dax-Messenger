@@ -8,23 +8,13 @@ import (
 )
 
 type RedisMessageHandler interface {
-	HandleRedisMessage(ctx context.Context, msg dto.PubSubMessage) error
+	HandleRedisMessage(ctx context.Context, msg dto.RedisMessage) error
 }
 
-func (h *UserPubSubHandler) HandleRedisMessage(ctx context.Context, msg dto.PubSubMessage) error {
-	h.log.Info("redis msg", "msg", msg)
+func (h *UserPubSubHandler) HandleRedisMessage(ctx context.Context, msg dto.RedisMessage) error {
+	h.log.Info("redis msg", "type", msg.Type, "channel", msg.Channel)
 
-	// Make it so that you can get the ID in a different way, if necessary
 	id := msg.Channel[len("chat:"):]
-
-	payload := dto.TextMessagePayload{
-		ReplyTo: id,
-		Text:    msg.Payload,
-	}
-	msgJSON := &dto.MessageJSON{
-		Type:    "message",
-		Payload: payload,
-	}
 
 	h.wsConns.RLock()
 	conn, ok := h.wsConns.Conns[id]
@@ -35,10 +25,18 @@ func (h *UserPubSubHandler) HandleRedisMessage(ctx context.Context, msg dto.PubS
 		return nil
 	}
 
-	err := conn.WriteJSON(msgJSON)
+	var err error
+	switch msg.Type {
+	case "message", "message_deleted", "message_updated":
+		err = conn.WriteJSON(msg)
+	default:
+		h.log.Warn("Unknown message type from redis", "type", msg.Type)
+		return nil
+	}
+
 	if err != nil {
-		h.log.Error("Error to send new msg", "error", err)
-		return fmt.Errorf("error to send new msg")
+		h.log.Error("Error to send msg to ws", "error", err)
+		return fmt.Errorf("error to send msg to ws: %w", err)
 	}
 
 	return nil
